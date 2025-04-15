@@ -17,6 +17,36 @@ const theme = {
   },
 };
 
+// Just before you return the main app component
+// DEVELOPMENT ONLY - REMOVE FOR PRODUCTION
+useEffect(() => {
+  if (process.env.NODE_ENV === 'development') {
+    // Auto-login for development
+    const email = "test@example.com";
+    const password = "password123";
+    
+    auth.signInWithEmailAndPassword(email, password)
+      .then(() => console.log("Dev login successful"))
+      .catch((error) => {
+        console.log("Creating test account");
+        auth.createUserWithEmailAndPassword(email, password)
+          .then((userCredential) => {
+            const user = userCredential.user;
+            const userRef = doc(db, 'users', user.uid);
+            setDoc(userRef, {
+              uid: user.uid,
+              email,
+              name: "Test User",
+              role: "producer", // Choose your test role
+              createdAt: serverTimestamp(),
+              lastSeen: serverTimestamp()
+            });
+          })
+          .catch(e => console.error("Dev account setup failed:", e));
+      });
+  }
+}, []);
+
 export default function App() {
   return (
     <PaperProvider theme={theme}>
@@ -42,3 +72,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+

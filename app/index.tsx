@@ -7,25 +7,24 @@ export default function IndexPage() {
   const { currentUser, userDetails } = useAuth();
   const navigation = useNavigation();
 
-  // Redirect based on user role
-  useEffect(() => {
-    if (currentUser && userDetails) {
-      switch (userDetails.role) {
-        case 'producer':
-          navigation.navigate('ProducerTabs' as never);
-          break;
-        case 'booking_officer':
-          navigation.navigate('BookingOfficerTabs' as never);
-          break;
-        case 'operator':
-          navigation.navigate('OperatorTabs' as never);
-          break;
-        default:
-          // If role is not recognized, stay on this page
-          break;
+  if (currentUser && userDetails) {
+    console.log("User authenticated with role:", userDetails.role);
+    setTimeout(() => {
+      try {
+        switch (userDetails.role) {
+          case 'producer':
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'ProducerTabs' }],
+            });
+            break;
+          // ... other cases
+        }
+      } catch (e) {
+        console.error("Navigation error:", e);
       }
-    }
-  }, [currentUser, userDetails]);
+    }, 500); // Small delay to ensure navigation is ready
+  }
 
   return (
     <View style={styles.container}>
