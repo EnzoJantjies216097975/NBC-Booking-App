@@ -1,11 +1,10 @@
-// src/utils/notifications.js
-
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { format } from 'date-fns';
 
 // Register for push notifications and return the token
 export async function registerForPushNotificationsAsync() {
@@ -36,7 +35,7 @@ export async function registerForPushNotificationsAsync() {
     
     // Get the token that uniquely identifies this device
     token = (await Notifications.getExpoPushTokenAsync({
-      projectId: Constants.expoConfig.extra.eas.projectId,
+      projectId: Constants.expoConfig?.extra?.eas?.projectId ?? "unknown",
     })).data;
   } else {
     console.log('Must use physical device for Push Notifications');
@@ -46,7 +45,7 @@ export async function registerForPushNotificationsAsync() {
 }
 
 // Save the push token to Firestore
-export async function savePushToken(userId) {
+export async function savePushToken(userId: string) {
   try {
     const token = await registerForPushNotificationsAsync();
     
@@ -62,7 +61,12 @@ export async function savePushToken(userId) {
 }
 
 // Schedule a local notification
-export async function scheduleLocalNotification(title, body, trigger, data = {}) {
+export async function scheduleLocalNotification(
+  title: string, 
+  body: string, 
+  trigger: Notifications.NotificationTriggerInput, 
+  data: Record<string, any> = {}
+) {
   return await Notifications.scheduleNotificationAsync({
     content: {
       title,
@@ -74,7 +78,11 @@ export async function scheduleLocalNotification(title, body, trigger, data = {})
 }
 
 // Send immediate local notification
-export async function sendImmediateNotification(title, body, data = {}) {
+export async function sendImmediateNotification(
+  title: string, 
+  body: string, 
+  data: Record<string, any> = {}
+) {
   return await Notifications.scheduleNotificationAsync({
     content: {
       title,
@@ -86,7 +94,7 @@ export async function sendImmediateNotification(title, body, data = {}) {
 }
 
 // Schedule production reminders (60min, 30min, 10min)
-export async function scheduleProductionReminders(production) {
+export async function scheduleProductionReminders(production: any) {
   try {
     // Convert Firestore timestamps to JavaScript Date objects
     const startTime = production.startTime.toDate();
@@ -140,6 +148,6 @@ export async function cancelAllScheduledNotifications() {
 }
 
 // Helper function to format time
-function formatTime(date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function formatTime(date: Date): string {
+  return format(date, 'h:mm a');
 }

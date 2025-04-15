@@ -1,17 +1,47 @@
-// src/screens/operator/DashboardScreen.js
-
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { Text, Card, Title, Paragraph, Button, Chip, Divider, useTheme, ActivityIndicator } from 'react-native-paper';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { format, isToday, isTomorrow } from 'date-fns';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { OperatorTabParamList, OperatorStackParamList } from '../../navigation';
+import { CompositeScreenProps } from '@react-navigation/native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
-export default function OperatorDashboardScreen({ navigation }) {
-  const [assignments, setAssignments] = useState([]);
+type OperatorDashboardScreenProps = CompositeScreenProps<
+  BottomTabScreenProps<OperatorTabParamList, 'Dashboard'>,
+  NativeStackScreenProps<OperatorStackParamList>
+>;
+
+type Assignment = {
+  id: string;
+  productionId: string;
+  userId: string;
+  role: string;
+  status: string;
+  production?: Production;
+  [key: string]: any;
+};
+
+type Production = {
+  id: string;
+  name: string;
+  date: Date;
+  callTime: Date;
+  startTime: Date;
+  endTime: Date;
+  venue: string;
+  locationDetails?: string;
+  status: string;
+  [key: string]: any;
+};
+
+export default function OperatorDashboardScreen({ navigation }: OperatorDashboardScreenProps) {
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { currentUser } = useAuth();
@@ -21,6 +51,8 @@ export default function OperatorDashboardScreen({ navigation }) {
   const fetchAssignments = async () => {
     try {
       setLoading(true);
+      
+      if (!currentUser) return;
       
       // Get all assignments for the current user
       const assignmentsRef = collection(db, 'assignments');
@@ -33,24 +65,25 @@ export default function OperatorDashboardScreen({ navigation }) {
       const assignmentsList = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as Assignment[];
       
       // Fetch production details for each assignment
       const assignmentsWithProductions = await Promise.all(
         assignmentsList.map(async (assignment) => {
           try {
-            const productionDoc = await getDocs(collection(db, 'productions'), assignment.productionId);
+            const productionDoc = await getDoc(doc(db, 'productions', assignment.productionId));
             
             if (productionDoc.exists()) {
+              const data = productionDoc.data();
               const productionData = {
-                ...productionDoc.data(),
                 id: productionDoc.id,
+                ...data,
                 // Convert Firestore timestamps to JS Date objects
-                date: productionDoc.data().date ? productionDoc.data().date.toDate() : null,
-                callTime: productionDoc.data().callTime ? productionDoc.data().callTime.toDate() : null,
-                startTime: productionDoc.data().startTime ? productionDoc.data().startTime.toDate() : null,
-                endTime: productionDoc.data().endTime ? productionDoc.data().endTime.toDate() : null,
-              };
+                date: data.date ? (data.date as Timestamp).toDate() : new Date(),
+                callTime: data.callTime ? (data.callTime as Timestamp).toDate() : new Date(),
+                startTime: data.startTime ? (data.startTime as Timestamp).toDate() : new Date(),
+                endTime: data.endTime ? (data.endTime as Timestamp).toDate() : new Date(),
+              } as Production;
               
               return {
                 ...assignment,
@@ -69,9 +102,9 @@ export default function OperatorDashboardScreen({ navigation }) {
       const validAssignments = assignmentsWithProductions
         .filter(a => a.production)
         .sort((a, b) => {
-          if (!a.production.date) return 1;
-          if (!b.production.date) return -1;
-          return a.production.date - b.production.date;
+          if (!a.production?.date) return 1;
+          if (!b.production?.date) return -1;
+          return a.production.date.getTime() - b.production.date.getTime();
         });
       
       setAssignments(validAssignments);
@@ -95,7 +128,7 @@ export default function OperatorDashboardScreen({ navigation }) {
   };
 
   // Get status color
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'requested':
         return '#FFC107'; // Amber
@@ -113,19 +146,17 @@ export default function OperatorDashboardScreen({ navigation }) {
   };
 
   // Format time function
-  const formatTime = (date) => {
-    if (!date) return 'N/A';
+  const formatTime = (date: Date) => {
     return format(date, 'h:mm a');
   };
 
   // Format date function
-  const formatDate = (date) => {
-    if (!date) return 'N/A';
+  const formatDate = (date: Date) => {
     return format(date, 'EEE, MMM d, yyyy');
   };
 
   // Get status text
-  const getStatusText = (status) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case 'requested':
         return 'Pending';
@@ -143,7 +174,7 @@ export default function OperatorDashboardScreen({ navigation }) {
   };
 
   // Convert role to display name
-  const getRoleName = (role) => {
+  const getRoleName = (role: string) => {
     switch (role) {
       case 'camera':
         return 'Camera Operator';
@@ -169,8 +200,8 @@ export default function OperatorDashboardScreen({ navigation }) {
   };
 
   // Render assignment card
-  const renderAssignmentCard = ({ item }) => {
-    const production = item.production;
+  const renderAssignmentCard = ({ item }: { item: Assignment }) => {
+    const production = item.production!;
     const isUpcoming = production.date && (isToday(production.date) || isTomorrow(production.date));
     
     return (
@@ -256,19 +287,26 @@ export default function OperatorDashboardScreen({ navigation }) {
 
   // Get upcoming assignments (today and tomorrow)
   const upcomingAssignments = assignments.filter(a => 
-    a.production.date && 
+    a.production?.date && 
     (isToday(a.production.date) || isTomorrow(a.production.date)) &&
     ['confirmed', 'in_progress'].includes(a.production.status)
   );
 
   // Get future assignments (not today or tomorrow)
   const futureAssignments = assignments.filter(a => 
-    a.production.date && 
+    a.production?.date && 
     !isToday(a.production.date) && 
     !isTomorrow(a.production.date) &&
     new Date() < a.production.date &&
     ['confirmed', 'requested'].includes(a.production.status)
   );
+
+  // Data structure for section list
+  type SectionData = {
+    type: 'header';
+    title: string;
+    data: Assignment[];
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -289,7 +327,7 @@ export default function OperatorDashboardScreen({ navigation }) {
           data={[
             { type: 'header', title: 'Upcoming Assignments', data: upcomingAssignments },
             { type: 'header', title: 'Future Assignments', data: futureAssignments }
-          ]}
+          ] as SectionData[]}
           keyExtractor={(item, index) => `section-${index}`}
           refreshControl={
             <RefreshControl
@@ -427,74 +465,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#E53935',
   },
 });
-
-// src/screens/operator/ScheduleScreen.js
-
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Text, Card, Title, Chip, Divider, useTheme, ActivityIndicator } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../config/firebase';
-import { useAuth } from '../../contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
-import { 
-  format, 
-  addDays,
-  startOfWeek,
-  addWeeks,
-  subWeeks,
-  eachDayOfInterval,
-  isSameDay,
-  isToday
-} from 'date-fns';
-
-export default function OperatorScheduleScreen({ navigation }) {
-  const [assignments, setAssignments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 })); // Start on Monday
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const { currentUser } = useAuth();
-  const theme = useTheme();
-
-  // Get dates for the week
-  const weekDates = eachDayOfInterval({
-    start: currentWeekStart,
-    end: addDays(currentWeekStart, 6)
-  });
-
-  // Fetch assignments and related production data
-  useEffect(() => {
-    const fetchAssignments = async () => {
-      try {
-        setLoading(true);
-        
-        // Get all assignments for the current user
-        const assignmentsRef = collection(db, 'assignments');
-        const q = query(
-          assignmentsRef,
-          where('userId', '==', currentUser.uid)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const assignmentsList = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        // Fetch production details for each assignment
-        const assignmentsWithProductions = await Promise.all(
-          assignmentsList.map(async (assignment) => {
-            try {
-              const productionDoc = await getDocs(collection(db, 'productions'), assignment.productionId);
-              
-              if (productionDoc.exists()) {
-                const productionData = {
-                  ...productionDoc.data(),
-                  id: productionDoc.id,
-                  // Convert Firestore timestamps to JS Date objects
-                  date: productionDoc.data().date ? productionDoc.data().date.toDate() : null,
-                  callTime: productionDoc.data().callTime ? productionDoc.data().callTime.toDate() : null,
-                  startTime: productionDoc.data().startTime ? productionDoc.data().startTime.toDate() : null,
-                  endTime: productionDoc.data().endTime ? productionDoc.data().endTime.toDate() : null,
-                };

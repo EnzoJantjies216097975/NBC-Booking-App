@@ -1,20 +1,48 @@
-// src/contexts/NotificationContext.js
-
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from './AuthContext';
 
-const NotificationContext = createContext();
+// Define types
+type Notification = {
+  id: string;
+  userId: string;
+  productionId?: string;
+  type: string;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: Timestamp;
+};
 
+type NotificationContextType = {
+  notifications: Notification[];
+  unreadCount: number;
+  loading: boolean;
+  markAsRead: (notificationId: string) => Promise<{ success: boolean; error?: string }>;
+  markAllAsRead: () => Promise<{ success: boolean; error?: string }>;
+};
+
+// Create the context
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+
+// Custom hook to use the notification context
 export function useNotifications() {
-  return useContext(NotificationContext);
+  const context = useContext(NotificationContext);
+  if (context === undefined) {
+    throw new Error('useNotifications must be used within a NotificationProvider');
+  }
+  return context;
 }
 
-export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+type NotificationProviderProps = {
+  children: ReactNode;
+};
+
+export function NotificationProvider({ children }: NotificationProviderProps) {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
   const { currentUser } = useAuth();
 
   // Load notifications from Firestore
@@ -37,7 +65,7 @@ export function NotificationProvider({ children }) {
       const notificationsList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      } as Notification));
       
       setNotifications(notificationsList);
       setUnreadCount(notificationsList.filter(n => !n.read).length);
@@ -48,14 +76,14 @@ export function NotificationProvider({ children }) {
   }, [currentUser]);
 
   // Mark notification as read
-  async function markAsRead(notificationId) {
+  async function markAsRead(notificationId: string) {
     try {
       const notificationRef = doc(db, 'notifications', notificationId);
       await updateDoc(notificationRef, {
         read: true
       });
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error marking notification as read:', error);
       return { 
         success: false, 
@@ -76,7 +104,7 @@ export function NotificationProvider({ children }) {
       
       await Promise.all(updatePromises);
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error marking all notifications as read:', error);
       return { 
         success: false, 

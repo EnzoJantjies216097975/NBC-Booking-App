@@ -1,6 +1,4 @@
-// src/contexts/AuthContext.js
-
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { auth, db } from '../config/firebase';
 import { 
@@ -8,25 +6,58 @@ import {
   signInWithEmailAndPassword, 
   signOut,
   sendPasswordResetEmail,
-  onAuthStateChanged
+  onAuthStateChanged,
+  User
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import * as Device from 'expo-device';
 import { savePushToken } from '../utils/notifications';
 
-const AuthContext = createContext();
+// Define types for context
+type UserDetails = {
+  uid: string;
+  email: string;
+  name: string;
+  role: 'producer' | 'booking_officer' | 'operator';
+  specialization?: string;
+  createdAt: any;
+  lastSeen: any;
+};
 
+type AuthContextType = {
+  currentUser: User | null;
+  userDetails: UserDetails | null;
+  register: (email: string, password: string, name: string, role: string, specialization?: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  fetchUserDetails: (uid: string) => Promise<UserDetails | null>;
+};
+
+// Create context
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Hook for using auth context
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }
 
-export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userDetails, setUserDetails] = useState(null);
+// Auth provider component
+type AuthProviderProps = {
+  children: ReactNode;
+};
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Register user with email and password
-  async function register(email, password, name, role, specialization = null) {
+  async function register(email: string, password: string, name: string, role: string, specialization: string | undefined = null) {
     try {
       // Create auth user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -40,7 +71,7 @@ export function AuthProvider({ children }) {
         role,
         createdAt: serverTimestamp(),
         lastSeen: serverTimestamp()
-      };
+      } as UserDetails;
 
       if (specialization && role === 'operator') {
         userData.specialization = specialization;
@@ -54,7 +85,7 @@ export function AuthProvider({ children }) {
       }
       
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       return { 
         success: false, 
         error: error.message 
@@ -63,7 +94,7 @@ export function AuthProvider({ children }) {
   }
 
   // Login with email and password
-  async function login(email, password) {
+  async function login(email: string, password: string) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
@@ -79,7 +110,7 @@ export function AuthProvider({ children }) {
       }
       
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       return { 
         success: false, 
         error: error.message 
@@ -92,7 +123,7 @@ export function AuthProvider({ children }) {
     try {
       await signOut(auth);
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       return { 
         success: false, 
         error: error.message 
@@ -101,11 +132,11 @@ export function AuthProvider({ children }) {
   }
 
   // Reset password
-  async function resetPassword(email) {
+  async function resetPassword(email: string) {
     try {
       await sendPasswordResetEmail(auth, email);
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       return { 
         success: false, 
         error: error.message 
@@ -114,11 +145,11 @@ export function AuthProvider({ children }) {
   }
 
   // Fetch user details from Firestore
-  async function fetchUserDetails(uid) {
+  async function fetchUserDetails(uid: string) {
     try {
       const userDoc = await getDoc(doc(db, 'users', uid));
       if (userDoc.exists()) {
-        const userData = userDoc.data();
+        const userData = userDoc.data() as UserDetails;
         setUserDetails(userData);
         return userData;
       } else {

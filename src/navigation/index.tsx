@@ -1,5 +1,3 @@
-// src/navigation/index.js (completed version with imports)
-
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -39,6 +37,66 @@ import ProductionDetailsScreen from '../screens/common/ProductionDetailsScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 
+// Define param types for the navigators
+export type RootStackParamList = {
+  Auth: undefined;
+  ProducerStack: undefined;
+  BookingOfficerStack: undefined;
+  OperatorStack: undefined;
+};
+
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
+};
+
+export type ProducerStackParamList = {
+  ProducerTabs: undefined;
+  RequestDetails: { productionId: string };
+  ProductionDetails: { productionId: string };
+  Message: { productionId: string; productionName: string; messageType?: string };
+};
+
+export type BookingOfficerStackParamList = {
+  BookingOfficerTabs: undefined;
+  ManageRequest: { productionId: string };
+  AssignOperators: { productionId: string; requirements?: any[]; existingAssignments?: any[] };
+  ProductionDetails: { productionId: string };
+  Message: { productionId: string; productionName: string; messageType?: string };
+  PrintSchedule: { productionId: string };
+};
+
+export type OperatorStackParamList = {
+  OperatorTabs: undefined;
+  AssignmentDetails: { assignmentId: string };
+  ProductionDetails: { productionId: string };
+  Message: { productionId: string; productionName: string; messageType?: string };
+};
+
+export type ProducerTabParamList = {
+  Dashboard: undefined;
+  Schedule: undefined;
+  Create: undefined;
+  Notifications: undefined;
+  Profile: undefined;
+};
+
+export type BookingOfficerTabParamList = {
+  Dashboard: undefined;
+  Schedule: undefined;
+  Print: undefined;
+  Notifications: undefined;
+  Profile: undefined;
+};
+
+export type OperatorTabParamList = {
+  Dashboard: undefined;
+  Schedule: undefined;
+  Notifications: undefined;
+  Profile: undefined;
+};
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -62,7 +120,7 @@ function ProducerTabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
+          let iconName: any;
 
           if (route.name === 'Dashboard') {
             iconName = focused ? 'home' : 'home-outline';
@@ -122,7 +180,7 @@ function BookingOfficerTabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
+          let iconName: any;
 
           if (route.name === 'Dashboard') {
             iconName = focused ? 'home' : 'home-outline';
@@ -183,7 +241,7 @@ function OperatorTabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
+          let iconName: any;
 
           if (route.name === 'Dashboard') {
             iconName = focused ? 'home' : 'home-outline';
@@ -258,6 +316,3 @@ export default function Navigation() {
       return <AuthNavigator />;
   }
 }
-
-// src/utils/notifications.js (missing import in original code)
-import { getDoc } from 'firebase/firestore';
