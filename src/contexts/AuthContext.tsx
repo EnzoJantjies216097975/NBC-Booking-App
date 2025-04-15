@@ -146,10 +146,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Fetch user details from Firestore
   async function fetchUserDetails(uid: string) {
+    console.log("Starting to fetch user details for:", uid);
     try {
       const userDoc = await getDoc(doc(db, 'users', uid));
+      console.log("User doc exists:", userDoc.exists());
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserDetails;
+        console.log("Got user data:", JSON.stringify(userData));
         setUserDetails(userData);
         return userData;
       } else {

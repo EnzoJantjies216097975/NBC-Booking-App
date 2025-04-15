@@ -1,7 +1,7 @@
 {
   "name": "nbc-booking-app",
   "version": "1.0.0",
-  "main": "expo-router/entry",
+  "main": "index",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -27,7 +27,7 @@
     "expo-router": "~4.0.20",
     "expo-sharing": "13.0.1",
     "expo-status-bar": "~2.0.1",
-    "firebase": "^10.4.0",
+    "firebase": "^10.14.1",
     "react": "18.3.1",
     "react-native": "0.76.9",
     "react-native-gesture-handler": "~2.20.2",

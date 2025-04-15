@@ -1,11 +1,16 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState  } from 'react';
+import { StyleSheet, Text, View, Button } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider, DefaultTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { NotificationProvider } from './src/contexts/NotificationContext';
 import Navigation from './src/navigation';
+import { auth, db } from './src/config/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+
+
 
 // Define the app theme
 const theme = {
@@ -19,35 +24,34 @@ const theme = {
 
 // Just before you return the main app component
 // DEVELOPMENT ONLY - REMOVE FOR PRODUCTION
-useEffect(() => {
-  if (process.env.NODE_ENV === 'development') {
-    // Auto-login for development
-    const email = "test@example.com";
-    const password = "password123";
-    
-    auth.signInWithEmailAndPassword(email, password)
-      .then(() => console.log("Dev login successful"))
-      .catch((error) => {
-        console.log("Creating test account");
-        auth.createUserWithEmailAndPassword(email, password)
-          .then((userCredential) => {
-            const user = userCredential.user;
-            const userRef = doc(db, 'users', user.uid);
-            setDoc(userRef, {
-              uid: user.uid,
-              email,
-              name: "Test User",
-              role: "producer", // Choose your test role
-              createdAt: serverTimestamp(),
-              lastSeen: serverTimestamp()
-            });
-          })
-          .catch(e => console.error("Dev account setup failed:", e));
-      });
-  }
-}, []);
-
 export default function App() {
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const email = "test@example.com";
+      const password = "password123";
+      
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => console.log("Dev login successful"))
+        .catch((error) => {
+          console.log("Creating test account");
+          createUserWithEmailAndPassword(auth, email, password)
+            .then((userCredential) => {
+              const user = userCredential.user;
+              const userRef = doc(db, 'users', user.uid);
+              setDoc(userRef, {
+                uid: user.uid,
+                email,
+                name: "Test User",
+                role: "producer",
+                createdAt: serverTimestamp(),
+                lastSeen: serverTimestamp()
+              });
+            })
+            .catch(e => console.error("Dev account setup failed:", e));
+        });
+    }
+  }, []);
+
   return (
     <PaperProvider theme={theme}>
       <SafeAreaProvider>
@@ -55,7 +59,6 @@ export default function App() {
           <NotificationProvider>
             <NavigationContainer>
               <Navigation />
-              <StatusBar style="auto" />
             </NavigationContainer>
           </NotificationProvider>
         </AuthProvider>
