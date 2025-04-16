@@ -26,6 +26,7 @@ type Operator = {
     id: string;
     status: string;
   };
+  pendingRemoval?: boolean;
 };
 
 type Production = {
@@ -154,7 +155,7 @@ export default function AssignOperatorsScreen({ route, navigation }: AssignOpera
     };
     
     fetchData();
-  }, [productionId, requirements, existingAssignments]);
+  }, [productionId, requirements, existingAssignments, navigation]);
   
   // Toggle category expansion
   const toggleCategory = (category: string) => {
@@ -500,3 +501,122 @@ export default function AssignOperatorsScreen({ route, navigation }: AssignOpera
           >
             Save Assignments
           </Button>
+          
+          <Button
+            mode="outlined"
+            onPress={() => navigation.goBack()}
+            style={styles.cancelButton}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  productionCard: {
+    marginBottom: 16,
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  venueText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  searchbar: {
+    marginBottom: 16,
+  },
+  requirementCard: {
+    marginBottom: 16,
+  },
+  countText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    paddingHorizontal: 16,
+  },
+  divider: {
+    marginVertical: 12,
+  },
+  operatorsSection: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  operatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  operatorInfo: {
+    flex: 1,
+  },
+  operatorName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  operatorEmail: {
+    fontSize: 14,
+    color: '#666',
+  },
+  statusChip: {
+    marginRight: 8,
+  },
+  acceptedChip: {
+    backgroundColor: '#4CAF50',
+  },
+  declinedChip: {
+    backgroundColor: '#F44336',
+  },
+  pendingChip: {
+    backgroundColor: '#FFC107',
+  },
+  noOperatorsText: {
+    fontStyle: 'italic',
+    color: '#666',
+    textAlign: 'center',
+    padding: 8,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  saveButton: {
+    flex: 0.48,
+  },
+  cancelButton: {
+    flex: 0.48,
+  },
+});

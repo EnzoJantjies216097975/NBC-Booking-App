@@ -1,20 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, Chip, Divider, useTheme, ActivityIndicator, IconButton, Title } from 'react-native-paper';
-import { collection, query, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { Text, Card, Title, Button, Chip, Divider, useTheme, ActivityIndicator } from 'react-native-paper';
+import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { format, isSameDay, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, eachDayOfInterval, subDays } from 'date-fns';
+import { format, isSameDay, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BookingOfficerTabParamList, BookingOfficerStackParamList } from '../../navigation';
+import { OperatorTabParamList, OperatorStackParamList } from '../../navigation';
 import { CompositeScreenProps } from '@react-navigation/native';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
-type BookingOfficerScheduleScreenProps = CompositeScreenProps<
-  BottomTabScreenProps<BookingOfficerTabParamList, 'Schedule'>,
-  NativeStackScreenProps<BookingOfficerStackParamList>
+type OperatorScheduleScreenProps = CompositeScreenProps<
+  BottomTabScreenProps<OperatorTabParamList, 'Schedule'>,
+  NativeStackScreenProps<OperatorStackParamList>
 >;
+
+type Assignment = {
+  id: string;
+  productionId: string;
+  userId: string;
+  role: string;
+  status: string;
+  production?: Production;
+  [key: string]: any;
+};
 
 type Production = {
   id: string;
@@ -26,48 +37,84 @@ type Production = {
   venue: string;
   locationDetails?: string;
   status: string;
-  requesterName: string;
   [key: string]: any;
 };
 
 type ViewMode = 'day' | 'week' | 'month';
 
-export default function BookingOfficerScheduleScreen({ navigation }: BookingOfficerScheduleScreenProps) {
-  const [productions, setProductions] = useState<Production[]>([]);
+export default function OperatorScheduleScreen({ navigation }: OperatorScheduleScreenProps) {
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { currentUser } = useAuth();
   const theme = useTheme();
 
-  // Fetch productions from Firestore
-  const fetchProductions = async () => {
+  // Fetch assignments and related production data
+  const fetchAssignments = async () => {
     try {
       setLoading(true);
       
-      const productionsRef = collection(db, 'productions');
+      if (!currentUser) return;
+      
+      // Get all assignments for the current user
+      const assignmentsRef = collection(db, 'assignments');
       const q = query(
-        productionsRef,
-        orderBy('date', 'asc')
+        assignmentsRef,
+        where('userId', '==', currentUser.uid),
+        where('status', '==', 'accepted') // Only show accepted assignments
       );
       
       const querySnapshot = await getDocs(q);
-      const productionsList = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          // Convert Firestore timestamps to JS Date objects
-          date: data.date ? (data.date as Timestamp).toDate() : new Date(),
-          callTime: data.callTime ? (data.callTime as Timestamp).toDate() : new Date(),
-          startTime: data.startTime ? (data.startTime as Timestamp).toDate() : new Date(),
-          endTime: data.endTime ? (data.endTime as Timestamp).toDate() : new Date(),
-        } as Production;
-      });
+      const assignmentsList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Assignment[];
       
-      setProductions(productionsList);
+      // Fetch production details for each assignment
+      const assignmentsWithProductions = await Promise.all(
+        assignmentsList.map(async (assignment) => {
+          try {
+            const productionDoc = await getDoc(doc(db, 'productions', assignment.productionId));
+            
+            if (productionDoc.exists()) {
+              const data = productionDoc.data();
+              const productionData = {
+                id: productionDoc.id,
+                ...data,
+                // Convert Firestore timestamps to JS Date objects
+                date: data.date ? (data.date as Timestamp).toDate() : new Date(),
+                callTime: data.callTime ? (data.callTime as Timestamp).toDate() : new Date(),
+                startTime: data.startTime ? (data.startTime as Timestamp).toDate() : new Date(),
+                endTime: data.endTime ? (data.endTime as Timestamp).toDate() : new Date(),
+              } as Production;
+              
+              return {
+                ...assignment,
+                production: productionData
+              };
+            }
+            return assignment;
+          } catch (error) {
+            console.error('Error fetching production:', error);
+            return assignment;
+          }
+        })
+      );
+      
+      // Filter out assignments without productions and sort by date
+      const validAssignments = assignmentsWithProductions
+        .filter(a => a.production)
+        .sort((a, b) => {
+          if (!a.production?.date) return 1;
+          if (!b.production?.date) return -1;
+          return a.production.date.getTime() - b.production.date.getTime();
+        });
+      
+      setAssignments(validAssignments);
     } catch (error) {
-      console.error('Error fetching productions:', error);
+      console.error('Error fetching assignments:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -76,13 +123,13 @@ export default function BookingOfficerScheduleScreen({ navigation }: BookingOffi
 
   // Initial fetch
   useEffect(() => {
-    fetchProductions();
+    fetchAssignments();
   }, []);
 
   // Pull to refresh
   const onRefresh = () => {
     setRefreshing(true);
-    fetchProductions();
+    fetchAssignments();
   };
 
   // Get status color
@@ -131,6 +178,32 @@ export default function BookingOfficerScheduleScreen({ navigation }: BookingOffi
     }
   };
 
+  // Convert role to display name
+  const getRoleName = (role: string) => {
+    switch (role) {
+      case 'camera':
+        return 'Camera Operator';
+      case 'sound':
+        return 'Sound Operator';
+      case 'lighting':
+        return 'Lighting Operator';
+      case 'evs':
+        return 'EVS Operator';
+      case 'director':
+        return 'Director';
+      case 'stream':
+        return 'Stream Operator';
+      case 'technician':
+        return 'Technician';
+      case 'electrician':
+        return 'Electrician';
+      case 'transport':
+        return 'Transport';
+      default:
+        return role;
+    }
+  };
+
   // Handle view mode changes
   const toggleViewMode = (mode: ViewMode) => {
     setViewMode(mode);
@@ -172,49 +245,77 @@ export default function BookingOfficerScheduleScreen({ navigation }: BookingOffi
     }
   };
 
-  // Get productions for a specific day
-  const getProductionsForDay = (day: Date): Production[] => {
-    return productions.filter(production => isSameDay(production.date, day));
+  // Get assignments for a specific day
+  const getAssignmentsForDay = (day: Date): Assignment[] => {
+    return assignments.filter(assignment => 
+      assignment.production && isSameDay(assignment.production.date, day));
   };
 
-  // Handle view production details
-  const handleViewProduction = (productionId: string) => {
-    navigation.navigate('ManageRequest', { productionId });
+  // Render assignment item
+  const renderAssignmentItem = (assignment: Assignment) => {
+    const production = assignment.production!;
+    const isUpcoming = production.date && (isToday(production.date) || isTomorrow(production.date));
+    
+    return (
+      <Card 
+        key={assignment.id}
+        style={[
+          styles.assignmentCard,
+          isUpcoming && styles.upcomingCard,
+          production.status === 'in_progress' && styles.inProgressCard
+        ]}
+        onPress={() => navigation.navigate('AssignmentDetails', { assignmentId: assignment.id })}
+      >
+        <Card.Content>
+          <View style={styles.cardHeader}>
+            <Title style={styles.cardTitle}>{production.name}</Title>
+            <Chip 
+              mode="outlined" 
+              style={{ backgroundColor: getStatusColor(production.status) }}
+              textStyle={{ color: 'white' }}
+            >
+              {getStatusText(production.status)}
+            </Chip>
+          </View>
+          
+          <View style={styles.roleContainer}>
+            <Chip style={styles.roleChip}>{getRoleName(assignment.role)}</Chip>
+          </View>
+          
+          <Divider style={styles.divider} />
+          
+          <View style={styles.timeContainer}>
+            <View style={styles.timeInfo}>
+              <Text style={styles.timeLabel}>Call Time:</Text>
+              <Text style={styles.timeValue}>{formatTime(production.callTime)}</Text>
+            </View>
+            
+            <View style={styles.timeInfo}>
+              <Text style={styles.timeLabel}>Start:</Text>
+              <Text style={styles.timeValue}>{formatTime(production.startTime)}</Text>
+            </View>
+            
+            <View style={styles.timeInfo}>
+              <Text style={styles.timeLabel}>End:</Text>
+              <Text style={styles.timeValue}>{formatTime(production.endTime)}</Text>
+            </View>
+          </View>
+          
+          <View style={styles.venueContainer}>
+            <Ionicons name="location-outline" size={16} />
+            <Text style={styles.venueText}>
+              {production.venue}
+              {production.locationDetails ? ` - ${production.locationDetails}` : ''}
+            </Text>
+          </View>
+        </Card.Content>
+      </Card>
+    );
   };
-
-  // Render production item
-  const renderProductionItem = (production: Production) => (
-    <Card 
-      key={production.id}
-      style={[
-        styles.productionCard,
-        production.status === 'requested' && styles.requestedProductionCard
-      ]}
-      onPress={() => handleViewProduction(production.id)}
-    >
-      <Card.Content>
-        <View style={styles.cardHeader}>
-          <Title style={styles.cardTitle}>{production.name}</Title>
-          <Chip 
-            mode="outlined" 
-            style={{ backgroundColor: getStatusColor(production.status) }}
-            textStyle={{ color: 'white' }}
-          >
-            {getStatusText(production.status)}
-          </Chip>
-        </View>
-        
-        <View style={styles.cardTimeInfo}>
-          <Text style={styles.timeText}>{formatTime(production.startTime)} - {formatTime(production.endTime)}</Text>
-          <Text style={styles.venueText}>{production.venue}</Text>
-        </View>
-      </Card.Content>
-    </Card>
-  );
 
   // Render day column
   const renderDayColumn = (day: Date) => {
-    const dayProductions = getProductionsForDay(day);
+    const dayAssignments = getAssignmentsForDay(day);
     const isSelectedDay = isSameDay(day, selectedDate);
     const isDayToday = isToday(day);
     
@@ -255,11 +356,11 @@ export default function BookingOfficerScheduleScreen({ navigation }: BookingOffi
         </TouchableOpacity>
         
         <ScrollView style={styles.dayContent}>
-          {dayProductions.length > 0 ? (
-            dayProductions.map(production => renderProductionItem(production))
+          {dayAssignments.length > 0 ? (
+            dayAssignments.map(assignment => renderAssignmentItem(assignment))
           ) : (
             <View style={styles.emptyDay}>
-              <Text style={styles.emptyDayText}>No productions</Text>
+              <Text style={styles.emptyDayText}>No assignments</Text>
             </View>
           )}
         </ScrollView>
@@ -331,20 +432,28 @@ export default function BookingOfficerScheduleScreen({ navigation }: BookingOffi
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
-      ) : (
-        <View style={styles.scheduleContainer}>
-          {renderScheduleContent()}
+      ) : assignments.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="calendar-outline" size={64} color="#ccc" />
+          <Text style={styles.emptyText}>No assignments</Text>
+          <Text style={styles.emptySubtext}>
+            You will see your assignments here once you have accepted them
+          </Text>
         </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.primary]}
+            />
+          }
+        >
+          {renderScheduleContent()}
+        </ScrollView>
       )}
-      
-      <Button 
-        mode="contained" 
-        icon="printer"
-        onPress={() => navigation.navigate('Print')}
-        style={styles.printButton}
-      >
-        Print Schedule
-      </Button>
     </SafeAreaView>
   );
 }
@@ -378,13 +487,30 @@ const styles = StyleSheet.create({
   viewModeButton: {
     marginHorizontal: 5,
   },
-  scheduleContainer: {
-    flex: 1,
+  scrollContainer: {
+    flexGrow: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    marginTop: 16,
+    fontWeight: 'bold',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
   },
   weekContainer: {
     flexDirection: 'row',
@@ -431,14 +557,17 @@ const styles = StyleSheet.create({
   },
   dayContent: {
     padding: 8,
-    flexGrow: 1,
   },
-  productionCard: {
+  assignmentCard: {
     marginBottom: 8,
   },
-  requestedProductionCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#FFC107',
+  upcomingCard: {
+    borderLeftWidth: 5,
+    borderLeftColor: '#4CAF50',
+  },
+  inProgressCard: {
+    borderLeftWidth: 5,
+    borderLeftColor: '#2196F3',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -451,16 +580,40 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  cardTimeInfo: {
-    marginTop: 4,
+  roleContainer: {
+    marginBottom: 8,
   },
-  timeText: {
-    fontSize: 14,
+  roleChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#e0e0e0',
+  },
+  divider: {
+    marginVertical: 5,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 5,
+  },
+  timeInfo: {
+    alignItems: 'center',
+  },
+  timeLabel: {
+    fontSize: 10,
+    color: '#666',
+  },
+  timeValue: {
+    fontSize: 12,
     fontWeight: 'bold',
   },
+  venueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
   venueText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 12,
+    marginLeft: 4,
   },
   emptyDay: {
     padding: 10,
@@ -473,11 +626,5 @@ const styles = StyleSheet.create({
   emptyDayText: {
     color: '#999',
     fontStyle: 'italic',
-  },
-  printButton: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    borderRadius: 30,
   },
 });

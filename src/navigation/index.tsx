@@ -13,13 +13,13 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import ProducerDashboardScreen from '../screens/producer/DashboardScreen';
 import ProducerScheduleScreen from '../screens/producer/ScheduleScreen';
 import CreateRequestScreen from '../screens/producer/CreateRequestScreen';
-import ProducerRequestDetailsScreen from '../screens/producer/RequestDetailsScreen';
+import ProducerRequestDetailsScreen from '../screens/producer/RequestDetailScreen';
 
 // Booking Officer Screens
 import BookingOfficerDashboardScreen from '../screens/bookingOfficer/DashboardScreen';
 import BookingOfficerScheduleScreen from '../screens/bookingOfficer/ScheduleScreen';
 import ManageRequestScreen from '../screens/bookingOfficer/ManageRequestScreen';
-import AssignOperatorsScreen from '../screens/bookingOfficer/AssignOperatorsScreen';
+import AssignOperatorsScreen from '../screens/bookingOfficer/AssignOperatorScreen';
 import PrintScheduleScreen from '../screens/bookingOfficer/PrintScheduleScreen';
 
 // Operator Screens

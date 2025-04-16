@@ -366,6 +366,16 @@ export default function CreateRequestScreen({ navigation }: CreateRequestScreenP
             placeholder="Studio number, specific room, etc."
           />
           
+          <TextInput
+            label="Notes (optional)"
+            value={notes}
+            onChangeText={setNotes}
+            style={styles.input}
+            mode="outlined"
+            multiline
+            numberOfLines={4}
+          />
+          
           <Text style={styles.sectionTitle}>Crew Requirements</Text>
           
           {requirements.map((req, index) => (
@@ -393,8 +403,133 @@ export default function CreateRequestScreen({ navigation }: CreateRequestScreenP
               </View>
             </View>
           ))}
+          
+          <Button
+            mode="contained"
+            onPress={handleSubmit}
+            style={styles.submitButton}
+            loading={loading}
+            disabled={loading}
+          >
+            Submit Request
+          </Button>
         </ScrollView>
       </KeyboardAvoidingView>
+      
+      {/* Date/Time pickers */}
+      {(Platform.OS === 'ios' || showDatePicker) && activePicker === 'date' && (
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+        />
+      )}
+      
+      {(Platform.OS === 'ios' || showCallTimePicker) && activePicker === 'callTime' && (
+        <DateTimePicker
+          value={callTime}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+        />
+      )}
+      
+      {(Platform.OS === 'ios' || showStartTimePicker) && activePicker === 'startTime' && (
+        <DateTimePicker
+          value={startTime}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+        />
+      )}
+      
+      {(Platform.OS === 'ios' || showEndTimePicker) && activePicker === 'endTime' && (
+        <DateTimePicker
+          value={endTime}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+        />
+      )}
     </SafeAreaView>
   );
-};
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  input: {
+    marginBottom: 16,
+    backgroundColor: '#fff',
+  },
+  dateInputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+    color: '#666',
+  },
+  dateButton: {
+    justifyContent: 'flex-start',
+    height: 56,
+  },
+  timeInputsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  timeInputWrapper: {
+    flex: 0.32,
+  },
+  timeButton: {
+    justifyContent: 'center',
+    height: 56,
+  },
+  requirementRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    padding: 8,
+    backgroundColor: '#fff',
+    borderRadius: 4,
+  },
+  requirementType: {
+    fontSize: 16,
+    flex: 1,
+  },
+  counterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  requirementCount: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    minWidth: 30,
+    textAlign: 'center',
+  },
+  submitButton: {
+    marginTop: 32,
+    padding: 8,
+  },
+});

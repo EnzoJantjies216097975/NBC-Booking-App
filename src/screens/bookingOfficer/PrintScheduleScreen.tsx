@@ -1,120 +1,4 @@
-import React, { useState, useEffect }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollContent: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  optionsContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  radioOption: {
-    marginVertical: -8,
-  },
-  radioLabel: {
-    fontSize: 16,
-  },
-  customDateContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  dateInput: {
-    flex: 0.48,
-  },
-  divider: {
-    marginVertical: 16,
-  },
-  headerContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  },
-  headerInput: {
-    marginBottom: 8,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-  },
-  previewContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  },
-  noProductionsText: {
-    fontStyle: 'italic',
-    color: '#999',
-    textAlign: 'center',
-    padding: 16,
-  },
-  productionPreview: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    paddingVertical: 12,
-  },
-  productionName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  productionDate: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  productionTime: {
-    fontSize: 14,
-    color: '#666',
-  },
-  productionVenue: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  crewCount: {
-    fontSize: 14,
-    fontStyle: 'italic',
-    color: '#666',
-    marginTop: 8,
-  },
-  printButton: {
-    marginVertical: 16,
-  },
-  backButton: {
-    marginBottom: 32,
-  },
-}); from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native';
 import { Text, Button, Divider, useTheme, List, RadioButton, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -734,3 +618,119 @@ export default function PrintScheduleScreen({ route, navigation }: PrintSchedule
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  optionsContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  radioOption: {
+    marginVertical: -8,
+  },
+  radioLabel: {
+    fontSize: 16,
+  },
+  customDateContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  dateInput: {
+    flex: 0.48,
+  },
+  divider: {
+    marginVertical: 16,
+  },
+  headerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  headerInput: {
+    marginBottom: 8,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  previewContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  noProductionsText: {
+    fontStyle: 'italic',
+    color: '#999',
+    textAlign: 'center',
+    padding: 16,
+  },
+  productionPreview: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    paddingVertical: 12,
+  },
+  productionName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  productionDate: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  productionTime: {
+    fontSize: 14,
+    color: '#666',
+  },
+  productionVenue: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  crewCount: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: '#666',
+    marginTop: 8,
+  },
+  printButton: {
+    marginVertical: 16,
+  },
+  backButton: {
+    marginBottom: 32,
+  },
+});

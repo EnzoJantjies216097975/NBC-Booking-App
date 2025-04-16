@@ -123,7 +123,7 @@ export default function ManageRequestScreen({ route, navigation }: ManageRequest
     };
 
     fetchProductionDetails();
-  }, [productionId]);
+  }, [productionId, navigation]);
 
   // Format time function
   const formatTime = (date: Date) => {
@@ -498,30 +498,378 @@ export default function ManageRequestScreen({ route, navigation }: ManageRequest
     });
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Production Details</Text>
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
-      <ScrollView style={styles.scrollContainer}>
-        <View style={styles.formContainer}>
-          <View style={styles.formItem}>
-            <Text style={styles.label}>Production Name:</Text>
-            <Text style={styles.value}>{production?.name}</Text>
-          </View>
-          <View style={styles.formItem}>
-            <Text style={styles.label}>Date:</Text>
-            <Text style={styles.value}>{formatDate(production?.date)}</Text>
-          </View>
-          <View style={styles.formItem}>
-            <Text style={styles.label}>Time:</Text>
-            <Text style={styles.value}>{formatTime(production?.time)}</Text>
-          </View>
-          <View style={styles.formItem}>
-            <Text style={styles.label}>Location:</Text>
-            <Text style={styles.value}>{production?.location}</Text>
-          </View>
-          <View style={styles.formItem}>
-            <Text style={styles.label}>Notes:</Text>
-            <Text style={styles.value}>{production?.notes}</Text>
-          </View>
+    );
+  }
+
+  if (!production) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text>Production not found</Text>
+        <Button mode="contained" onPress={() => navigation.goBack()}>
+          Go Back
+        </Button>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Card style={styles.card}>
+          <Card.Content>
+            <View style={styles.headerRow}>
+              <Title style={styles.title}>{production.name}</Title>
+              <Chip 
+                mode="outlined" 
+                style={{ backgroundColor: getStatusColor(production.status) }}
+                textStyle={{ color: 'white' }}
+              >
+                {getStatusText(production.status)}
+              </Chip>
+            </View>
+            
+            <Divider style={styles.divider} />
+            
+            <View style={styles.detailsSection}>
+              <Text style={styles.sectionTitle}>Date & Time</Text>
+              
+              <View style={styles.detailRow}>
+                <Ionicons name="calendar-outline" size={20} color="#555" />
+                <Text style={styles.detailText}>{formatDate(production.date)}</Text>
+              </View>
+              
+              <View style={styles.timeRow}>
+                <View style={styles.timeInfo}>
+                  <Text style={styles.timeLabel}>Call Time</Text>
+                  <Text style={styles.timeValue}>{formatTime(production.callTime)}</Text>
+                </View>
+                
+                <View style={styles.timeInfo}>
+                  <Text style={styles.timeLabel}>Start</Text>
+                  <Text style={styles.timeValue}>{formatTime(production.startTime)}</Text>
+                </View>
+                
+                <View style={styles.timeInfo}>
+                  <Text style={styles.timeLabel}>End</Text>
+                  <Text style={styles.timeValue}>{formatTime(production.endTime)}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.detailRow}>
+                <Ionicons name="location-outline" size={20} color="#555" />
+                <Text style={styles.detailText}>
+                  {production.venue}
+                  {production.locationDetails ? ` - ${production.locationDetails}` : ''}
+                </Text>
+              </View>
+            </View>
+            
+            <Divider style={styles.divider} />
+            
+            <List.Accordion
+              title="Crew Requirements"
+              expanded={requirementsExpanded}
+              onPress={() => setRequirementsExpanded(!requirementsExpanded)}
+              style={styles.accordion}
+            >
+              {production.requirements.map(req => (
+                <View key={req.type} style={styles.requirementRow}>
+                  <Ionicons name={getTypeIcon(req.type)} size={18} color="#555" />
+                  <Text style={styles.requirementText}>
+                    {getTypeName(req.type)}: {req.count}
+                  </Text>
+                </View>
+              ))}
+            </List.Accordion>
+            
+            {production.assignments && production.assignments.length > 0 && (
+              <>
+                <Divider style={styles.divider} />
+                
+                <List.Accordion
+                  title="Assigned Crew"
+                  expanded={assignmentsExpanded}
+                  onPress={() => setAssignmentsExpanded(!assignmentsExpanded)}
+                  style={styles.accordion}
+                >
+                  {production.assignments.map(assignment => (
+                    <View key={assignment.id} style={styles.assignmentRow}>
+                      <Ionicons name={getTypeIcon(assignment.role)} size={18} color="#555" />
+                      <Text style={styles.assignmentText}>
+                        {getTypeName(assignment.role)}: {assignment.userDetails?.name || 'Unknown'}
+                      </Text>
+                      <Chip 
+                        style={[
+                          styles.statusChip,
+                          assignment.status === 'accepted' ? styles.acceptedChip : 
+                          assignment.status === 'declined' ? styles.declinedChip : 
+                          styles.pendingChip
+                        ]}
+                      >
+                        {assignment.status}
+                      </Chip>
+                    </View>
+                  ))}
+                </List.Accordion>
+              </>
+            )}
+            
+            <Divider style={styles.divider} />
+            
+            <List.Accordion
+              title={production.notes ? "Notes" : "Add Notes"}
+              expanded={notesExpanded}
+              onPress={() => setNotesExpanded(!notesExpanded)}
+              style={styles.accordion}
+            >
+              <TextInput
+                value={notesInput}
+                onChangeText={setNotesInput}
+                mode="outlined"
+                multiline
+                numberOfLines={5}
+                style={styles.notesInput}
+                placeholder="Add production notes here..."
+              />
+              
+              <Button
+                mode="contained"
+                onPress={handleSaveNotes}
+                style={styles.saveNotesButton}
+                loading={submitting}
+                disabled={submitting}
+              >
+                Save Notes
+              </Button>
+            </List.Accordion>
+          </Card.Content>
+        </Card>
+        
+        <View style={styles.actionsContainer}>
+          {production.status === 'requested' && (
+            <>
+              <Button
+                mode="contained"
+                icon="check"
+                onPress={handleApproveProduction}
+                style={[styles.actionButton, styles.approveButton]}
+                loading={submitting}
+                disabled={submitting}
+              >
+                Approve Production
+              </Button>
+              
+              <Button
+                mode="outlined"
+                icon="close"
+                onPress={handleRejectProduction}
+                style={[styles.actionButton, styles.rejectButton]}
+                loading={submitting}
+                disabled={submitting}
+              >
+                Reject Production
+              </Button>
+            </>
+          )}
+          
+          {production.status === 'confirmed' && (
+            <Button
+              mode="contained"
+              icon="play"
+              onPress={handleMarkInProgress}
+              style={[styles.actionButton, styles.startButton]}
+              loading={submitting}
+              disabled={submitting}
+            >
+              Mark as In Progress
+            </Button>
+          )}
+          
+          {production.status === 'in_progress' && (
+            <Button
+              mode="contained"
+              icon="check-circle"
+              onPress={handleMarkCompleted}
+              style={[styles.actionButton, styles.completeButton]}
+              loading={submitting}
+              disabled={submitting}
+            >
+              Mark as Completed
+            </Button>
+          )}
+          
+          {['confirmed', 'in_progress'].includes(production.status) && (
+            <>
+              <Button
+                mode="outlined"
+                icon="account-multiple"
+                onPress={handleAssignCrew}
+                style={styles.actionButton}
+              >
+                Manage Crew
+              </Button>
+              
+              <Button
+                mode="outlined"
+                icon="printer"
+                onPress={handlePrintSchedule}
+                style={styles.actionButton}
+              >
+                Print Schedule
+              </Button>
+            </>
+          )}
+          
+          <Button
+            mode="outlined"
+            icon="message"
+            onPress={handleSendMessage}
+            style={styles.actionButton}
+          >
+            Send Message
+          </Button>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  card: {
+    marginBottom: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 20,
+    flex: 1,
+    marginRight: 12,
+  },
+  divider: {
+    marginVertical: 16,
+  },
+  detailsSection: {
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  detailText: {
+    marginLeft: 8,
+    fontSize: 16,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  timeInfo: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  timeLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  timeValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  accordion: {
+    padding: 0,
+    backgroundColor: '#f5f5f5',
+  },
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+    marginLeft: 16,
+  },
+  requirementText: {
+    marginLeft: 8,
+    fontSize: 16,
+  },
+  assignmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+    marginLeft: 16,
+  },
+  assignmentText: {
+    marginLeft: 8,
+    fontSize: 16,
+    flex: 1,
+  },
+  statusChip: {
+    marginLeft: 8,
+  },
+  acceptedChip: {
+    backgroundColor: '#4CAF50',
+  },
+  declinedChip: {
+    backgroundColor: '#F44336',
+  },
+  pendingChip: {
+    backgroundColor: '#FFC107',
+  },
+  notesInput: {
+    marginBottom: 16,
+    height: 120,
+  },
+  saveNotesButton: {
+    marginBottom: 8,
+  },
+  actionsContainer: {
+    marginBottom: 20,
+  },
+  actionButton: {
+    marginBottom: 12,
+  },
+  approveButton: {
+    backgroundColor: '#4CAF50',
+  },
+  rejectButton: {
+    borderColor: '#F44336',
+  },
+  startButton: {
+    backgroundColor: '#2196F3',
+  },
+  completeButton: {
+    backgroundColor: '#4CAF50',
+  },
+});
