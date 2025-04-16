@@ -3,6 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from 'react-native-paper';
+import { View, ActivityIndicator } from 'react-native';
 
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -36,6 +37,8 @@ import ProductionDetailsScreen from '../screens/common/ProductionDetailsScreen';
 // Navigation Stacks
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+
+export {default as default} from './NavigationComponent'; 
 
 // Define param types for the navigators
 export type RootStackParamList = {
@@ -97,6 +100,24 @@ export type OperatorTabParamList = {
   Profile: undefined;
 };
 
+export default function Navigation() {
+  const { currentUser, userDetails } = useAuth();
+
+  // If no user is logged in, show auth screens
+  if (!currentUser) {
+    return <AuthNavigator />;
+  }
+
+  // If user is logged in but we don't have their details yet
+  if (!userDetails) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#1976D2" />
+      </View>
+    );
+  }
+
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -112,46 +133,13 @@ function AuthNavigator() {
 }
 
 // Producer Tab Navigator
-function ProducerTabNavigator() {
-  const theme = useTheme();
-  const { unreadCount } = useNotifications();
-  
+function AuthNavigator() {
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any;
-
-          if (route.name === 'Dashboard') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Schedule') {
-            iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === 'Create') {
-            iconName = focused ? 'add-circle' : 'add-circle-outline';
-          } else if (route.name === 'Notifications') {
-            iconName = focused ? 'notifications' : 'notifications-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: 'gray',
-      })}
-    >
-      <Tab.Screen name="Dashboard" component={ProducerDashboardScreen} />
-      <Tab.Screen name="Schedule" component={ProducerScheduleScreen} />
-      <Tab.Screen name="Create" component={CreateRequestScreen} />
-      <Tab.Screen 
-        name="Notifications" 
-        component={NotificationsScreen} 
-        options={{ 
-          tabBarBadge: unreadCount > 0 ? unreadCount : null 
-        }} 
-      />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    </Stack.Navigator>
   );
 }
 
@@ -295,12 +283,11 @@ export default function Navigation() {
 
   // If no user is logged in, show auth screens
   if (!currentUser) {
-    return <AuthNavigator />;
-  }
-
-  // If user is logged in but we don't have their details yet
-  if (!userDetails) {
-    return null; // Or a loading screen
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#1976D2" />
+      </View>
+    );
   }
 
   // Otherwise, show the appropriate screens based on user role

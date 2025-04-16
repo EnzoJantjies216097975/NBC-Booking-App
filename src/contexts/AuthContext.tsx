@@ -167,14 +167,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Check auth state
   useEffect(() => {
-    console.log("Checking auth state");
+    console.log("Starting auth state check");
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log("Auth state changed:", user ? "User logged in" : "No user");
+      console.log("Auth state changed:", user ? `User logged in: ${user.uid}` : "No user");
       setCurrentUser(user);
       
       if (user) {
         console.log("Fetching user details for ID:", user.uid);
-        await fetchUserDetails(user.uid);
+        try {
+          const details = await fetchUserDetails(user.uid);
+          console.log("User details fetch result:", details ? "Success" : "Failed");
+        } catch (error) {
+          console.error("Error in fetchUserDetails:", error);
+        }
       } else {
         setUserDetails(null);
       }

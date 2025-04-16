@@ -18,8 +18,10 @@ const firebaseConfig = {
   measurementId: Constants.expoConfig?.extra?.firebaseMeasurementId ?? "G-1V32L44QX1"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+try {
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  console.log("Firebase initialized successfully");
 
 // Initialize Firebase services
 const auth = getAuth(app);
@@ -28,3 +30,7 @@ const storage = getStorage(app);
 const functions = getFunctions(app);
 
 export { app, auth, db, storage, functions };
+} catch (error) {
+  console.error("Firebase initialization error:", error);
+  // Consider adding fallback or recovery mechanism
+}
