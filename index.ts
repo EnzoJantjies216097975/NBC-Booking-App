@@ -1,5 +1,4 @@
 import { registerRootComponent } from 'expo';
-export { default as default } from './NavigationComponent';
 
 import App from './App';
 
