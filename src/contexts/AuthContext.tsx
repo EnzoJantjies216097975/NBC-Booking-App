@@ -32,6 +32,7 @@ type AuthContextType = {
   logout: () => Promise<{ success: boolean; error?: string }>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   fetchUserDetails: (uid: string) => Promise<UserDetails | null>;
+  authInitialized: boolean;
 };
 
 // Create context
@@ -55,9 +56,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   // Register user with email and password
-  async function register(email: string, password: string, name: string, role: string, specialization: string | undefined = null) {
+  async function register(email: string, password: string, name: string, role: string, specialization: string | undefined = undefined) {
     try {
       // Create auth user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -86,6 +88,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       return { success: true };
     } catch (error: any) {
+      console.error("Registration error:", error);
       return { 
         success: false, 
         error: error.message 
@@ -111,6 +114,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       return { success: true };
     } catch (error: any) {
+      console.error("Login error:", error);
       return { 
         success: false, 
         error: error.message 
@@ -146,7 +150,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Fetch user details from Firestore
   async function fetchUserDetails(uid: string) {
-    console.log("Starting to fetch user details for:", uid);
+    console.log("Fetching user details for:", uid);
     try {
       const userDoc = await getDoc(doc(db, 'users', uid));
       console.log("User doc exists:", userDoc.exists());
@@ -168,15 +172,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Check auth state
   useEffect(() => {
     console.log("Starting auth state check");
+    let authTimeout: NodeJS.Timeout;
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log("Auth state changed:", user ? `User logged in: ${user.uid}` : "No user");
+      
+      clearTimeout(authTimeout);
       setCurrentUser(user);
       
       if (user) {
         console.log("Fetching user details for ID:", user.uid);
         try {
-          const details = await fetchUserDetails(user.uid);
-          console.log("User details fetch result:", details ? "Success" : "Failed");
+          await fetchUserDetails(user.uid);
         } catch (error) {
           console.error("Error in fetchUserDetails:", error);
         }
@@ -185,10 +192,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       
       setLoading(false);
+      setAuthInitialized(true);
       console.log("Auth loading finished");
     });
+    
+    // Failsafe in case Firebase auth doesn't initialize properly
+    authTimeout = setTimeout(() => {
+      console.log("Auth timeout reached, proceeding with app");
+      setLoading(false);
+      setAuthInitialized(true);
+    }, 5000);
   
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      clearTimeout(authTimeout);
+    };
   }, []);
 
   const value = {
@@ -199,11 +217,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     resetPassword,
     fetchUserDetails,
+    authInitialized
   };
 
+  // Don't render children until auth is initialized OR timeout is reached
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? null : children}
     </AuthContext.Provider>
   );
 }
